@@ -1,0 +1,22 @@
+# data
+data/raw/
+*.npy
+*.pt
+*.ckpt
+
+# secrets / env
+.env
+*.key
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# notebooks
+.ipynb_checkpoints/
+
+# os
+.DS_Store

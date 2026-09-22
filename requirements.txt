@@ -1,0 +1,14 @@
+numpy
+pandas
+scipy
+scikit-learn
+scikit-image
+opencv-python
+Pillow
+imagehash
+matplotlib
+torch
+shap
+streamlit
+reportlab
+pytest
