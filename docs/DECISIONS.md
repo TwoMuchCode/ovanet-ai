@@ -17,3 +17,5 @@ Format: Date | Who | Decision | Why | Alternatives considered
 2026-09-23 | Madhumita | Confirmed dataset issue: test folder duplicates train (~1,921 unique images), and image size alone predicts the label (shortcut) | Confirms what master doc told us to assume — group-aware split is essential | N/A
 
 2026-09-23 | Sahina | Repo stays PRIVATE, no real dataset images in public demo, until licence is confirmed | Licence is "Unknown" — playing it safe | N/A
+
+2026-09-23 | Sahina | Confirmed PreprocessResult (and by extension all contract objects) use attribute access (.raw), not dict access (["raw"]) | Verified against Madhumita's real preprocess() output; avoids a TypeError bug when wiring real modules into app/pipeline | N/A
