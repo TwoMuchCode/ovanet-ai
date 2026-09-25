@@ -54,3 +54,26 @@ C3, C4, C6, timings, warnings, is_mock.
 
 ## Sign-off log
 - 2026-09-22 (Day 2): Sahina drafted and froze v0.1 per master prompt Section 7. Awaiting Madhumita's review.
+
+## Addendum v0.2 (Day 1–2, from Madhumita, signed off by Sahina)
+
+**Coordinates:** x = column, y = row, in 256×256 pixel space.
+
+**Normaliser:** R = sqrt(ovary_area_px / π). All `_rel` values are expressed in units of R.
+
+**Adjacency (C4):** kNN with k = min(3, n-1), symmetrised (union), no self-loops.
+Weight = exp(-d²/τ), τ = median of d² over edges (τ = 1.0 if no edges exist).
+
+**peripheral_index:** = 1 - mean(dist_to_boundary / d_max), range [0, 1].
+Higher = more peripheral distribution of follicles.
+
+**n < 3 handling:** all graph stats = 0.0 except `n_follicles`.
+`GraphResult` also carries `"valid": False` in this case.
+
+**Vision encoder (C2):** ResNet18-based encoder, output dim 512 (matches E_CNN_DIM).
+
+**ovary_mask definition:** until a real ovary outline exists, `ovary_mask` = the
+ultrasound sector/fan region, used as the analysis ROI.
+
+**Status:** Contracts v0.1 + this addendum = v0.2, confirmed OK by both members.
+Frozen as of 2026-09-23 (Day 2).
