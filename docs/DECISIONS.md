@@ -9,3 +9,11 @@ Format: Date | Who | Decision | Why | Alternatives considered
 2026-09-24 | Madhumita | Python: laptops 3.13.0, Colab 3.13.15, code must run on both; pin python_version in the Spaces README at deploy (Spaces default is 3.10) | All stack packages install and import on 3.13; matches Colab | 3.10 (source-only releases, end of support Oct 2026); 3.12 (not needed)
 2026-09-24 | Madhumita | U-Net encoder = ResNet18 | Contract fixes E_CNN_DIM = 512, which ResNet18/34 give and MobileNetV3 does not | MobileNetV3 (rejected: dimension mismatch)
 ---
+
+2026-09-23 | Madhumita + Sahina | Froze CONTRACTS.md v0.2 (coordinate rules, adjacency math, peripheral_index formula, n<3 handling, ResNet18 encoder, ovary_mask = sector region) | Needed exact math before C4/fusion code | N/A
+
+2026-09-23 | Madhumita | G1 provisional: images are full frames, not crops | Per master doc, this means an ovary outline/head must be added to segmentation | N/A
+
+2026-09-23 | Madhumita | Confirmed dataset issue: test folder duplicates train (~1,921 unique images), and image size alone predicts the label (shortcut) | Confirms what master doc told us to assume — group-aware split is essential | N/A
+
+2026-09-23 | Sahina | Repo stays PRIVATE, no real dataset images in public demo, until licence is confirmed | Licence is "Unknown" — playing it safe | N/A
