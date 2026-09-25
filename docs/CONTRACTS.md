@@ -77,3 +77,8 @@ ultrasound sector/fan region, used as the analysis ROI.
 
 **Status:** Contracts v0.1 + this addendum = v0.2, confirmed OK by both members.
 Frozen as of 2026-09-23 (Day 2).
+
+**Access pattern clarification:** All contract result objects (PreprocessResult, VisionResult,
+RadiomicsResult, GraphResult, FusionResult, LongitudinalResult, AnalysisResult) are accessed
+via attributes (e.g. `result.raw`, `result.quality.ok`), NOT dict keys (`result["raw"]` will
+raise TypeError). Confirmed against Madhumita's real preprocess() output, Day 2.
