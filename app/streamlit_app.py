@@ -7,7 +7,9 @@ ovanet.pipeline.analyze() as real pieces arrive (Day 3+).
 """
 
 import streamlit as st
-
+from PIL import Image
+import numpy as np
+from ovanet.preprocessing import preprocess as real_preprocess
 from ovanet.mocks import mock_analyze, mock_longitudinal
 from ovanet.contracts import GRAPH_STAT_NAMES
 
@@ -22,12 +24,21 @@ st.warning(
 st.title("OvaNet AI -- PCOS Risk Assessment")
 
 uploaded = st.file_uploader("Upload an ovarian ultrasound image", type=["png", "jpg", "jpeg"])
-
 if uploaded is not None:
-    result = mock_analyze(image=uploaded)
+    pil_img = Image.open(uploaded).convert("L")
+    img_array = np.array(pil_img)
+
+    real_prep = real_preprocess(img_array)
+
+    st.success("✅ Real preprocessing (C1) is now active.")
+    st.image(real_prep.raw, caption="Real preprocessed image (raw)", clamp=True)
+    if not real_prep.quality.ok:
+        st.warning(f"Quality check failed: {real_prep.quality.reasons}")
+
+    result = mock_analyze(image=uploaded)  # rest of the pipeline still mock
 
     if result.is_mock:
-        st.error("🧪 MOCK DATA -- this is not a real analysis (real pipeline not wired in yet).")
+        st.error("🧪 MOCK DATA below this point — real radiomics/vision/fusion not wired in yet.")
 
     col1, col2 = st.columns(2)
 
