@@ -38,4 +38,26 @@
 - Nothing
 
 ### Next
-- Day 3: radiomics C3, paper baseline notebook, shortcut check, start annotating dev-15 images
+- Day 3: radiomics C3, paper baseline, shortcut check, annotation lists
+
+---
+
+## Day 3 (2026-09-26)
+### Done
+- `ovanet/radiomics.py`: C3 contract — mean, std, entropy, GLCM contrast, GLCM homogeneity (32 levels, dist 1, 4 angles averaged, symmetric, normalised)
+- `tests/test_radiomics.py`: 10 tests — contract validation, known values (constant, noise), masked extraction, NaN safety
+- `data/processed/features_v1.csv`: 1,921 rows, 5 radiomics features computed on full RAW image (no mask)
+- `scripts/baseline_validation.py`: paper baseline + shortcut check
+- **Wilcoxon results**: 4/5 features match paper direction. **Homogeneity flipped** (paper says lower in PCOS, we see higher). Contrast not significant (p=0.086).
+- **Paper baseline A0 on TEST**: accuracy 61.3%, sensitivity 92.7%, specificity 26.5%, F1 71.6%. Much lower than paper's 100% — honest result on proper split.
+- **Shortcut B2 on TEST: 100% accuracy** from image metadata alone (width, height, brightness, contrast). Dataset has a severe shortcut — must report B2 next to every metric.
+- `scripts/select_annotation_images.py`: dev-15 (val, for me) and gold-test-15 (test, for Sahina) selected, stratified, one per group
+- `data/annotations/dev15_list.csv` and `gold_test15_list.csv` saved
+- **38/38 tests pass** (9 contracts + 13 preprocess + 6 splits + 10 radiomics)
+
+### Blocked
+- Nothing
+
+### Next
+- Annotate dev-15 images with Labelme (ovary outline + follicle outlines) — ~1-2 hours
+- Day 4: classical follicle detector, follicle features, graph builder

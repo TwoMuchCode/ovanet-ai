@@ -1,0 +1,16 @@
+path,label,group_id
+test\infected\img_0_9172.jpg,infected,203
+test\infected\img_0_1590.jpg,infected,29
+test\infected\img_0_5812.jpg,infected,164
+test\infected\img_0_820.jpg,infected,118
+test\infected\img_0_1195.jpg,infected,13
+test\infected\img_0_6676.jpg,infected,81
+test\infected\img_0_7453.jpg,infected,148
+test\infected\img_0_2739.jpg,infected,73
+test\notinfected\img_0_1903.jpg,notinfected,289
+test\notinfected\img_0_3117.jpg,notinfected,285
+test\notinfected\img_0_4564.jpg,notinfected,268
+test\notinfected\img_0_794.jpg,notinfected,399
+test\notinfected\img_0_4200.jpg,notinfected,314
+test\notinfected\img_0_821.jpg,notinfected,279
+test\notinfected\img_0_9342.jpg,notinfected,411
