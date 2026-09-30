@@ -19,3 +19,7 @@ Format: Date | Who | Decision | Why | Alternatives considered
 2026-09-23 | Sahina | Repo stays PRIVATE, no real dataset images in public demo, until licence is confirmed | Licence is "Unknown" — playing it safe | N/A
 
 2026-09-23 | Sahina | Confirmed PreprocessResult (and by extension all contract objects) use attribute access (.raw), not dict access (["raw"]) | Verified against Madhumita's real preprocess() output; avoids a TypeError bug when wiring real modules into app/pipeline | N/A
+
+2026-09-25 (Day 5) | Sahina | OOF GCN embeddings generated (rule L1 compliant, 5-fold GroupKFold) for all 1,345 train images -> data/processed/e_gnn_oof_v1.csv | Needed label-safe embeddings for fusion | N/A
+2026-09-25 (Day 5) | Sahina | Gate G3 initial result: A3 AUROC=0.974, A3+E_gnn AUROC=0.984 (delta +0.010). Both suspiciously high vs paper's 61.3% baseline -- likely shortcut contamination (confirmed via B2 re-check: AUROC [FILL IN FROM A1 OUTPUT]). DECISION: E_gnn's marginal gain not trusted standalone; final G3 call deferred until shortcut-adjusted evaluation (Day 8 final table will report B2 alongside every other model, per master doc) | Matches B2=100% shortcut Madhumita found on raw pixels | N/A
+2026-09-25 (Day 5) | Sahina | CP2 confirmed: real C1-C4 overlays (ovary mask, follicle graph, radiomics, GCN embedding) visible end-to-end in Streamlit app; fusion/risk score still clearly marked MOCK | Checkpoint per master doc Day 5 row | N/A
