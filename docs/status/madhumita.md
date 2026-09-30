@@ -86,3 +86,31 @@
 
 ### Next
 - Day 5: Train U-Net on Colab GPU for automated ovary & follicle segmentation, compare against classical detector
+
+---
+
+## Day 5 (2026-10-01)
+### Done
+- `scripts/generate_pseudo_masks.py`: Weak-supervision mask generator using Day 4 classical detector
+  - Generated 1,345 train and 289 val pseudo-masks (2 channels: ovary sector and detected follicles)
+  - Collision-free naming `<folder_split>_<label>_<stem>.npz`
+  - Packaged into `data/pseudo_masks_train_val.zip` (2.34 MB) for fast upload to Google Colab / Drive
+  - Mean detected follicles: ~15.9 per train image, ~16.2 per val image
+- `scripts/make_features.py`: Full C1 -> C2 -> C3 -> C4 pipeline
+  - Extracted 5 masked radiomics features + 8 graph statistics across all 1,921 images
+  - Saved `data/processed/features_v2.csv`
+  - Verified clinical signal: PCOS images show higher follicle counts (17.95 vs 14.62) and higher entropy (4.31 vs 4.05)
+- `ovanet/vision/unet.py`: ResNet-18 U-Net architecture (`smp.Unet`)
+  - 2 output channels: ovary sector mask + follicle mask
+  - Extract 512-dim bottleneck embedding ($E_{cnn}$) via Global Average Pooling matching Contract C2 (`E_CNN_DIM=512`)
+- `ovanet/vision/dataset.py`: PyTorch dataset with geometric and photometric augmentations (flips, slight rotations, contrast)
+- `ovanet/vision/train_unet.py`: Training engine with combined `BCEWithLogitsLoss` + `DiceLoss`
+- `notebooks/colab/train_unet.ipynb`: Complete, standalone Colab GPU notebook for 15-epoch training and visualization
+- `tests/test_unet.py`: 4 unit tests verifying U-Net forward pass, $E_{cnn}=512$ embedding shape, inference mask helper, and dataset augmentation
+- **55/55 tests pass** across the entire repository
+
+### Blocked
+- Nothing
+
+### Next
+- Day 6: Evaluate U-Net vs Classical detector on Sahina's 15 gold-test annotations (Gate G2), export E_cnn embeddings, build C2 infer API, generate features_v3

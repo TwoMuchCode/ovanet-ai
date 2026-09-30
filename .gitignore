@@ -1,5 +1,8 @@
 # data
 data/raw/
+data/pseudo_masks/
+*.npz
+*.zip
 *.npy
 *.pt
 *.ckpt
