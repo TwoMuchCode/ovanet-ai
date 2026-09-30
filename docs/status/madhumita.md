@@ -59,5 +59,30 @@
 - Nothing
 
 ### Next
-- Annotate dev-15 images with Labelme (ovary outline + follicle outlines) — ~1-2 hours
 - Day 4: classical follicle detector, follicle features, graph builder
+
+---
+
+## Day 4 (2026-09-30)
+### Done
+- `ovanet/detector.py`: C2 classical follicle detection
+  - Robust ultrasound sector estimation excluding machine metadata headers/footers
+  - Morphological Black Top-Hat isolating hypoechoic round fluid structures
+  - Adaptive/percentile thresholding within ovary ROI
+  - Geometric filtering: area [12, 800], solidity >= 0.65, eccentricity <= 0.85, mean intensity <= 0.55
+  - Returns `VisionResult` conforming to Contract C2 (`ovary_mask`, `follicle_labels`, `follicles`, `e_cnn`, `seg_method="classical"`)
+- `ovanet/graph.py`: C4 spatial graph builder
+  - 5-dim normalized follicle node features $[x_{rel}, y_{rel}, area_{rel}, r_{rel}, eccen]$
+  - Symmetrized $k$-NN adjacency ($k = \min(3, n-1)$) with Gaussian distance weights $w = \exp(-d^2 / \tau)$
+  - Exact 8 graph statistics matching `GRAPH_STAT_NAMES`: `n_follicles`, `mean_nn_dist_rel`, `std_nn_dist_rel`, `mean_degree`, `clustering_coeff`, `peripheral_index`, `size_cv`, `follicle_area_fraction`
+  - Safe $n < 3$ edge case handling (returns zeros, empty edges, `valid=False`)
+- `tests/test_detector.py`: 5 tests (sector mask estimation, synthetic dots detection, blank image handling, noise robustness, custom mask)
+- `tests/test_graph.py`: 4 tests (normal graph properties, $n < 3$ edge cases, end-to-end integration test feeding directly into Sahina's `gcn_embed`)
+- **51/51 tests pass** across the entire repository
+- Tested on real gold test images: successfully detects 17–22 follicles on real PCOS ultrasound frames
+
+### Blocked
+- Nothing
+
+### Next
+- Day 5: Train U-Net on Colab GPU for automated ovary & follicle segmentation, compare against classical detector
