@@ -14,7 +14,10 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
-import segmentation_models_pytorch as smp
+try:
+    import segmentation_models_pytorch as smp
+except ImportError:
+    smp = None
 
 from ovanet.contracts import IMAGE_SIZE, E_CNN_DIM
 
@@ -35,6 +38,11 @@ class OvaNetUNet(nn.Module):
         classes: int = 2,
     ):
         super().__init__()
+        if smp is None:
+            raise ImportError(
+                "segmentation-models-pytorch is required for OvaNetUNet. "
+                "Install via 'pip install segmentation-models-pytorch' or from requirements-train.txt."
+            )
         self.encoder_name = encoder_name
         self.in_channels = in_channels
         self.classes = classes

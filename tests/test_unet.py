@@ -9,6 +9,9 @@ import numpy as np
 import pytest
 import torch
 
+# Skip U-Net tests in lightweight environments where training deps are not installed
+pytest.importorskip("segmentation_models_pytorch")
+
 from ovanet.contracts import IMAGE_SIZE, E_CNN_DIM
 from ovanet.vision.unet import OvaNetUNet, build_unet
 from ovanet.vision.dataset import OvaNetSegmentationDataset
