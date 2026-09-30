@@ -5,7 +5,7 @@ detect_follicles(raw, enh=None, ovary_mask=None) -> VisionResult
 
 Algorithm:
   1. If ovary_mask is None, estimate ultrasound sector / tissue ROI:
-     - Clear the top 10% banner and bottom 5% margin to exclude machine text/metadata
+     - Clear the top 9% banner and bottom 5% margin to exclude machine text/metadata
      - Sector thresholding + morphological closing to get the scan fan/sector
      - Select largest connected component
   2. Morphological Black Top-Hat on enhanced/raw image with an elliptical
@@ -231,7 +231,11 @@ def detect_follicles(
     if len(follicles) == 0:
         warnings.append("No follicles detected with classical morphology.")
 
-    # 6. E_cnn: deterministic 512-dim embedding representation until deep model is exported (Day 6)
+    # 6. E_cnn: PLACEHOLDER — deterministic pixel-hash embedding.
+    #    This is NOT a real neural network embedding. It fills the contract shape
+    #    so that callers who only need follicle/ovary data can ignore it.
+    #    The authoritative E_cnn is produced by analyze_vision() → extract_ecnn()
+    #    which runs the ResNet-18 encoder (see ovanet/vision/infer.py).
     e_cnn = np.zeros(E_CNN_DIM, dtype=np.float32)
     block_8x8 = cv2.resize(raw, (8, 8), interpolation=cv2.INTER_AREA).ravel()
     e_cnn[:64] = block_8x8

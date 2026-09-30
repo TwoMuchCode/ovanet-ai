@@ -141,7 +141,7 @@ class OvaNetUNet(nn.Module):
 
     def load_checkpoint(self, path: str | Path, map_location: str = "cpu"):
         """Load weights from file."""
-        ckpt = torch.load(path, map_location=map_location)
+        ckpt = torch.load(path, map_location=map_location, weights_only=False)
         if isinstance(ckpt, dict) and "state_dict" in ckpt:
             self.load_state_dict(ckpt["state_dict"])
         else:
