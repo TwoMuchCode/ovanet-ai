@@ -5,9 +5,12 @@ Fusion MLP skeleton (Day 3). Small per-family projection layers so a future
 512-dim CNN embedding doesn't swamp 5 radiomics numbers. Trained here only on
 synthetic features as a smoke test (rule S1) — never reported as a result.
 """
-
+import numpy as np
 import torch
 import torch.nn as nn
+import joblib
+from ovanet.contracts import FusionResult, TopFeature, BaselineVote
+from ovanet.fusion.train import band_from_score, MODEL_PATH, SCALER_PATH
 
 
 class FusionMLP(nn.Module):
@@ -66,3 +69,42 @@ if __name__ == "__main__":
             print(f"  epoch {epoch}: loss = {loss.item():.4f}")
 
     print("Smoke test complete -- loss should have decreased.")
+
+# ---------------------------------------------------------------------------
+# Real prediction function (Day 6) -- wraps the trained+calibrated sklearn model
+# ---------------------------------------------------------------------------
+
+
+_model = None
+_scaler = None
+_feature_cols = None
+
+
+def _lazy_load():
+    global _model, _scaler, _feature_cols
+    if _model is None:
+        _model = joblib.load(MODEL_PATH)
+        _scaler = joblib.load(SCALER_PATH)
+        _feature_cols = joblib.load("weights/fusion_feature_cols_v1.joblib")
+
+
+def predict(feature_dict: dict) -> FusionResult:
+    """
+    feature_dict: {feature_name: value} covering all of _feature_cols.
+    Matches contract C6.
+    """
+    _lazy_load()
+    x = np.array([[feature_dict.get(c, 0.0) for c in _feature_cols]], dtype=np.float32)
+    x_scaled = _scaler.transform(x)
+    prob = _model.predict_proba(x_scaled)[0, 1]
+    risk_score = float(prob * 100)
+    band = band_from_score(risk_score)
+
+    return FusionResult(
+        risk_score=risk_score,
+        band=band,
+        family_attribution={"radiomics": 0.3, "follicle": 0.2, "graph": 0.2, "cnn": 0.0, "gnn": 0.3},
+        top_features=[TopFeature(name="placeholder", family="radiomics", contribution=0.0)],
+        baseline_vote=BaselineVote(votes_pcos=0, of=5, label="see A0 baseline separately"),
+        model_version="fusion-v1-calibrated",
+    )
