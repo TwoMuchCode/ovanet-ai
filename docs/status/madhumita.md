@@ -113,4 +113,30 @@
 - Nothing
 
 ### Next
-- Day 6: Evaluate U-Net vs Classical detector on Sahina's 15 gold-test annotations (Gate G2), export E_cnn embeddings, build C2 infer API, generate features_v3
+- Day 6: Evaluate U-Net vs Classical detector on Sahina's 15 gold-test annotations (Gate G2), export E_cnn embeddings, build C2 infer API, generate features_v3
+
+---
+
+## Day 6 (2026-10-01)
+### Done
+- `scripts/evaluate_gate_g2.py`: Head-to-head evaluation on 15 Gold-Test images (`data/gold_test_annotations/`)
+  - **Gate G2 Resolved**: Classical CV detector wins with **0.8727 Ovary Mask Dice** (vs 0.0650 for U-Net) and **0.4622 Combined Mean Dice** (vs 0.0466)
+  - Result documented in `experiments/results/gate_g2_evaluation.md` and `docs/DECISIONS.md`
+- `ovanet/vision/infer.py`: Implemented unified Contract C2 entrypoint `analyze_vision(prep) -> VisionResult`
+  - Runs classical detector for ovary sector & follicle instances
+  - Extracts 512-dimensional bottleneck embedding $E_{cnn}$ from ResNet-18 encoder via Global Average Pooling
+  - Sets `seg_method="classical"`
+- `scripts/make_features_v3.py`: Full dataset feature extraction (1,921 images)
+  - Extracted 512-dim $E_{cnn}$ embeddings and saved to `data/processed/ecnn_embeddings.npz` (3.56 MB)
+  - Fit 10-component PCA on TRAIN split only (Rule L2, 79.22% variance explained)
+  - Saved `data/processed/features_v3.csv` (723 KB) containing 5 masked radiomics + 8 graph stats + 10 PCA $E_{cnn}$ components
+  - Compared unmasked vs masked radiomics in `experiments/results/radiomics_mask_comparison.md` (shows masking eliminates background border bias)
+- `tests/test_vision.py`: 3 unit tests verifying Contract C2 return types, shapes, and blank image handling
+- **58/58 tests pass** across the entire repository
+
+### Blocked
+- Nothing
+
+### Next
+- Day 7: Train standalone ResNet18 CNN classifier baseline (B1) on Colab + generate Grad-CAM heatmaps for demo panel
+
