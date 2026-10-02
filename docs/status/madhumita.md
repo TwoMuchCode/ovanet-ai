@@ -139,4 +139,32 @@
 
 ### Next
 - Day 7: Train standalone ResNet18 CNN classifier baseline (B1) on Colab + generate Grad-CAM heatmaps for demo panel
+
+---
+
+## Day 7 (2026-10-02)
+### Done
+- Fixed `ovanet/pipeline.py`: now uses `analyze_vision()` (real ResNet-18 E_cnn) instead of `detect_follicles()` (placeholder E_cnn)
+- `scripts/run_real_ablation.py`: Full ablation table on REAL features (not synthetic)
+  - A0-A2 (radiomics only): AUROC=0.450 — confirms paper baseline is barely above chance on proper splits
+  - A3 (+ graph stats): AUROC=0.599 — graph features add ~15 points
+  - A4 (+ PCA E_cnn): AUROC=1.000 — but matches B2 shortcut, contaminated
+  - A5 (full fusion): AUROC=1.000, Acc=0.983 — slight drop from E_gnn zero-fill in test
+  - B1 (CNN only): AUROC=1.000 — CNN embedding alone captures shortcut
+  - B2 (shortcut): AUROC=1.000, Acc=1.000 — image metadata alone is perfect
+  - **Key finding**: A0-A3 (radiomics + graph) are the ONLY honest results. A4+ are contaminated by the same acquisition bias B2 exploits.
+- `experiments/results/ablation_table_real.md`: Full markdown report with bootstrap 95% CIs
+- Rewrote `README.md`: full project documentation (pipeline diagram, setup, methodology, structure, limitations, team)
+- Code review fixes from Day 6: fallback E_cnn uses local RandomState, torch.load weights_only, detector.py docstrings
+- **60/60 tests pass**
+
+### Blocked
+- Nothing
+
+### Key Insight for Judges
+The honest story is NOT "we got 100% accuracy." The honest story is:
+1. We DISCOVERED that the dataset has a critical acquisition confound (B2)
+2. Our radiomics + graph pipeline (A3) achieves 0.60 AUROC on genuinely medical features
+3. We built the architecture for multi-center validation where B2 wouldn't apply
+4. This is what responsible AI looks like — transparent about limitations
 
