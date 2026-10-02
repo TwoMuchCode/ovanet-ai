@@ -2,14 +2,14 @@
 ovanet/pipeline.py
 
 Real end-to-end analyze() function, replacing mocks entirely.
-Orchestrates C1 -> C2 -> C3 -> C4 -> C6.
+Orchestrates C1 -> C2 (via analyze_vision) -> C3 -> C4 -> GCN -> C6.
 """
 
 import time
 import numpy as np
 
 from ovanet.preprocessing import preprocess
-from ovanet.detector import detect_follicles
+from ovanet.vision.infer import analyze_vision
 from ovanet.radiomics import extract
 from ovanet.graph import build_graph
 from ovanet.gnn import gcn_embed
@@ -25,7 +25,9 @@ def analyze(image: np.ndarray, clinical=None) -> AnalysisResult:
     if not prep.quality.ok:
         warnings.append(f"Quality check: {prep.quality.reasons}")
 
-    vision = detect_follicles(prep.raw)
+    # C2: analyze_vision() uses classical detection (Gate G2 winner)
+    # AND extracts real 512-dim E_cnn via ResNet-18 encoder
+    vision = analyze_vision(prep)
     radiomics = extract(prep.raw, mask=vision.ovary_mask)
     graph = build_graph(vision.follicles, vision.ovary_mask)
     e_gnn = gcn_embed(graph)
@@ -50,4 +52,4 @@ def analyze(image: np.ndarray, clinical=None) -> AnalysisResult:
         timings={"total_s": time.time() - t0},
         warnings=warnings,
         is_mock=False,
-    )
+    )
