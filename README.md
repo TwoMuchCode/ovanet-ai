@@ -32,13 +32,13 @@ Streamlit Web App → Overlay visualization + risk gauge + report
 
 - **Multi-modal fusion**: Combines classical image processing, radiomics, graph neural networks, and CNN embeddings
 - **Explainable AI**: SHAP-based feature attribution shows which signal family drove each prediction
-- **Honest evaluation**: Rigorous ablation table with bootstrap confidence intervals documenting each feature family's contribution
+- **Honest evaluation**: B2 shortcut baseline exposed — image metadata alone achieves AUROC=1.0, documenting a critical dataset confound
 - **Leak-safe methodology**: Group-aware splits, out-of-fold GCN embeddings, PCA fitted on train only
 - **Gate-driven development**: Systematic comparison checkpoints (G1: image type, G2: classical vs U-Net, G3: graph contribution)
 
 ## Known Limitations
 
-- **Dataset size**: The primary Kaggle dataset contains ~1,921 unique images. Larger multi-center datasets would improve model generalization.
+- **Dataset confound (B2)**: The primary Kaggle dataset has systematic differences in image resolution between PCOS and normal classes. All models may be influenced by this acquisition bias rather than true medical signal.
 - **Not clinically validated**: No IRB approval, no prospective evaluation, no regulatory clearance.
 - **Single-center data**: All images come from one source; generalization to other scanners/populations is unproven.
 
@@ -65,7 +65,7 @@ ovanet-ai/
 │   │   ├── features.py         # Feature loading utilities
 │   │   └── explain.py          # SHAP explanation engine
 │   └── evaluation/             # Testing & comparison
-│       ├── ablation.py         # A0–A5/B1 comparison
+│       ├── ablation.py         # A0–A5/B1/B2 comparison
 │       ├── metrics.py          # Accuracy, AUROC, F1, bootstrap CI
 │       ├── gate_g3.py          # GNN contribution analysis
 │       └── oof_gnn.py          # Out-of-fold GCN embeddings
@@ -123,7 +123,7 @@ Upload `notebooks/colab/train_unet.ipynb` and the pseudo-mask zip to Colab.
 |------|----------|--------|----------|
 | **G1** | Are images cropped or full-frame? | Full transvaginal frames | Visual inspection of 20 images |
 | **G2** | Classical CV or U-Net for segmentation? | **Classical CV** (Dice 0.87 vs 0.07) | 15 gold-test annotations |
-| **G3** | Do graph features help? | Marginal (+0.01 AUROC), needs larger dataset | Ablation A3 vs A2 |
+| **G3** | Do graph features help? | Marginal (+0.01 AUROC) but contaminated by B2 | Ablation A3 vs A2 |
 
 ### Ablation Table
 
@@ -133,6 +133,7 @@ See `experiments/results/ablation_table_real.md` for the full comparison of:
 - **A4**: + CNN encoder embeddings (PCA)
 - **A5**: + GNN embeddings (full fusion)
 - **B1**: CNN-only baseline
+- **B2**: ⚠️ Shortcut baseline (image metadata only) — exposes dataset confound
 
 ## Team
 
