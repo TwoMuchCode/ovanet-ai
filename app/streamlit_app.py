@@ -1,168 +1,190 @@
 """
 app/streamlit_app.py
 
-OvaNet AI -- Streamlit app with sidebar navigation and landing page.
+OvaNet AI -- complete app: full pipeline display (graph, GCN, radiomics, SHAP)
++ clinical checklist + two-visit comparison + PDF export.
 """
 
 from PIL import Image
 import numpy as np
 import streamlit as st
-
+from ovanet.preprocessing import preprocess as real_preprocess
+from ovanet.visualization import draw_follicle_overlay, draw_graph_overlay
 from ovanet.pipeline import analyze
-from ovanet.mocks import mock_longitudinal
-from ovanet.contracts import GRAPH_STAT_NAMES
+from ovanet.checklist import evaluate_checklist
+from ovanet.longitudinal import compare as real_compare
+from ovanet.report import generate_pdf_report
+from ovanet.contracts import GRAPH_STAT_NAMES, ClinicalInput
 
 st.set_page_config(page_title="OvaNet AI", layout="wide", page_icon="🩺")
 
-st.markdown("""
-<style>
-    .ovanet-header {
-        font-size: 2.4rem; font-weight: 800;
-        background: linear-gradient(90deg, #7c3aed, #ec4899);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        margin-bottom: 0;
-    }
-    .ovanet-subtitle { color: #9ca3af; font-size: 1rem; margin-top: -5px; margin-bottom: 1.5rem; }
-    .hero-card {
-        background: linear-gradient(135deg, #1a1d29, #161822);
-        border-radius: 18px; padding: 40px; border: 1px solid #2d2f3d; text-align: center;
-    }
-    .metric-card { background: #1a1d29; border-radius: 14px; padding: 20px; border: 1px solid #2d2f3d; text-align: center; }
-    .risk-badge { display: inline-block; padding: 6px 18px; border-radius: 20px; font-weight: 700; font-size: 1.1rem; margin-top: 8px; }
-    .risk-low { background: #064e3b; color: #6ee7b7; }
-    .risk-moderate { background: #78350f; color: #fcd34d; }
-    .risk-high { background: #7f1d1d; color: #fca5a5; }
-    .section-card { background: #161822; border-radius: 14px; padding: 22px; border: 1px solid #272a38; margin-bottom: 16px; }
-    .feature-pill { display: inline-block; background: #1f2937; color: #d1d5db; padding: 4px 12px; border-radius: 999px; margin: 3px; font-size: 0.85rem; }
-    .step-badge { background:#312e81; color:#c7d2fe; border-radius:999px; padding:3px 10px; font-size:0.8rem; margin-right:6px; }
-</style>
-""", unsafe_allow_html=True)
+st.markdown("""<style>
+.hero-title{font-size:2.4rem;font-weight:800;background:linear-gradient(90deg,#a78bfa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.glass-card{background:rgba(255,255,255,0.04);border-radius:16px;padding:22px;border:1px solid rgba(255,255,255,0.08);margin-bottom:16px;}
+.risk-badge{display:inline-block;padding:6px 18px;border-radius:999px;font-weight:700;margin-top:8px;}
+.risk-low{background:#064e3b;color:#6ee7b7;}
+.risk-moderate{background:#78350f;color:#fcd34d;}
+.risk-high{background:#7f1d1d;color:#fca5a5;}
+.stat-pill{display:inline-block;background:#1e2030;color:#d1d5db;padding:6px 14px;border-radius:10px;margin:4px;font-size:0.85rem;border:1px solid #2d2f42;}
+.stat-pill b{color:#c4b5fd;}
+</style>""", unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# Sidebar navigation
-# ---------------------------------------------------------------------------
-with st.sidebar:
-    st.markdown("## 🩺 OvaNet AI")
-    page = st.radio("Navigate", ["🔬 Analyze", "📖 About", "🧪 Methodology"], label_visibility="collapsed")
-    st.markdown("---")
-    st.caption("Decision-support research prototype.")
-    st.caption("Not a diagnosis. Not clinically validated.")
-    st.markdown("---")
-    st.caption("TwoMuchCode · HackSpire '26")
+st.markdown('<div class="hero-title">🩺 OvaNet AI</div>', unsafe_allow_html=True)
+st.warning("⚕️ Decision-support research prototype. Not a diagnosis. Not clinically validated.")
 
 RISK_CLASS = {"LOW": "risk-low", "MODERATE": "risk-moderate", "HIGH": "risk-high"}
-RISK_EMOJI = {"LOW": "🟢", "MODERATE": "🟡", "HIGH": "🔴"}
 
-# ---------------------------------------------------------------------------
-# PAGE: About
-# ---------------------------------------------------------------------------
-if page == "📖 About":
-    st.markdown('<div class="ovanet-header">About OvaNet AI</div>', unsafe_allow_html=True)
-    st.markdown("""
-    OvaNet AI extends a validated statistical radiomics baseline with automatic follicle
-    detection, spatial-graph modelling, and fusion -- producing an explainable risk
-    estimate for clinician review.
+tab_analyze, tab_checklist, tab_twovisit = st.tabs(["🔬 Single Analysis", "📋 Clinical Checklist", "📅 Two-Visit Comparison"])
 
-    **What it does:**
-    - Detects follicles and the ovarian region from an ultrasound frame
-    - Computes texture (radiomics) features from a published baseline method
-    - Builds a spatial graph of follicle positions and relationships
-    - Fuses all signals into a calibrated risk score, with feature-family attribution
+# ===========================================================================
+# TAB 1: Single Analysis -- FULL pipeline display
+# ===========================================================================
+with tab_analyze:
+    uploaded = st.file_uploader("Upload an ovarian ultrasound image", type=["png", "jpg", "jpeg"], key="single")
 
-    **What it does NOT do:**
-    - It does not diagnose PCOS
-    - It is not clinically validated or regulatory-approved
-    - It does not replace a clinician's judgement
-    """)
+    if uploaded:
+        img = np.array(Image.open(uploaded).convert("L"))
 
-# ---------------------------------------------------------------------------
-# PAGE: Methodology
-# ---------------------------------------------------------------------------
-elif page == "🧪 Methodology":
-    st.markdown('<div class="ovanet-header">Methodology</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <span class="step-badge">1</span> **Preprocess** -- grayscale, resize, quality check<br><br>
-    <span class="step-badge">2</span> **Vision** -- classical CV detects ovary ROI + follicle instances<br><br>
-    <span class="step-badge">3</span> **Radiomics** -- mean, std, entropy, GLCM contrast/homogeneity (paper baseline)<br><br>
-    <span class="step-badge">4</span> **Graph** -- follicles as nodes, kNN spatial graph, 8 statistics incl. peripheral distribution<br><br>
-    <span class="step-badge">5</span> **GCN** -- learned graph embedding (out-of-fold, label-safe)<br><br>
-    <span class="step-badge">6</span> **Fusion** -- calibrated risk score + SHAP feature-family attribution
-    """, unsafe_allow_html=True)
-    st.warning("⚠️ Known limitation: dataset has a confirmed size/brightness shortcut (B2 baseline = 100% on that alone). "
-               "Current risk scores are not yet proven free of this contamination -- final honest evaluation is pending.")
+        with st.spinner("Running full pipeline: preprocess -> detect -> radiomics -> graph -> GCN -> fusion..."):
+            prep = real_preprocess(img)          # need raw/enh directly for the step-by-step views
+            result = analyze(img)                # full pipeline result (reuses the same steps internally)
 
-# ---------------------------------------------------------------------------
-# PAGE: Analyze
-# ---------------------------------------------------------------------------
-else:
-    st.markdown('<div class="ovanet-header">🩺 OvaNet AI</div>', unsafe_allow_html=True)
-    st.markdown('<div class="ovanet-subtitle">Explainable PCOS risk assessment from ovarian ultrasound</div>', unsafe_allow_html=True)
-    st.warning("⚕️ **Decision-support research prototype. Not a diagnosis.** Not clinically validated. Not a medical device.")
-
-    uploaded = st.file_uploader("📤 Upload an ovarian ultrasound image", type=["png", "jpg", "jpeg"])
-
-    if uploaded is None:
-        st.markdown('<div class="hero-card">', unsafe_allow_html=True)
-        st.markdown("### Upload an image to begin")
-        st.markdown("OvaNet will detect follicles, build a spatial graph, compute radiomics, "
-                     "and produce a calibrated risk estimate with full explainability.")
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        pil_img = Image.open(uploaded).convert("L")
-        img_array = np.array(pil_img)
-
-        with st.spinner("Running analysis pipeline..."):
-            result = analyze(img_array)
-
-        st.success(f"✅ Analysis complete in {result.timings['total_s']:.2f}s")
+        st.success(f"✅ Pipeline complete in {result.timings['total_s']:.2f}s")
         for w in result.warnings:
             st.caption(f"⚠️ {w}")
 
-        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown("---")
+
+        # ===================== STEP 1 — Raw uploaded image =====================
+        st.markdown("### Step 1 — Raw USG image (as uploaded)")
+        st.image(img, caption="Original upload", clamp=True, width=350)
+
+        # ===================== STEP 2 — Preprocessed =====================
+        st.markdown("### Step 2 — Preprocessed (resized to 256×256, normalized)")
+        st.image(prep.raw, caption="Preprocessed (raw channel)", clamp=True, width=350)
+        if not prep.quality.ok:
+            st.warning(f"Quality flags: {prep.quality.reasons}")
+
+        # ===================== STEP 3 — Follicle detection =====================
+        st.markdown("### Step 3 — Follicle detection (ROI + individual follicles marked)")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.image(result.vision.ovary_mask * 255, caption="Ovary ROI mask", clamp=True, width=330)
+        with col_b:
+            follicle_overlay = draw_follicle_overlay(prep.raw, result.vision.follicles)
+            st.image(follicle_overlay, caption=f"{len(result.vision.follicles)} follicles detected (circled + numbered)", width=330)
+
+        # ===================== STEP 4 — kNN follicle graph =====================
+        st.markdown("### Step 4 — kNN Follicle Graph (spatial relationships between follicles)")
+        graph_overlay = draw_graph_overlay(prep.raw, result.vision.follicles, result.graph)
+        st.image(graph_overlay, caption=f"n = {result.graph.n} nodes, kNN edges (brighter/thicker = stronger connection)", width=400)
+
+        pills = "".join(
+            f'<span class="stat-pill"><b>{k.replace("_"," ")}</b>: {round(result.graph.stats.get(k, float("nan")), 3)}</span>'
+            for k in GRAPH_STAT_NAMES
+        )
+        st.markdown(pills, unsafe_allow_html=True)
+
+        # ===================== STEP 5 — GCN embedding =====================
+        st.markdown("### Step 5 — GCN Embedding (E_gnn, 16-dim, from the graph above)")
+        from ovanet.gnn import gcn_embed
+        e_gnn = gcn_embed(result.graph)
+        gnn_cols = st.columns(8)
+        for i, col in enumerate(gnn_cols):
+            with col:
+                st.metric(f"d{i}", f"{e_gnn[i]:.3f}")
+        gnn_cols2 = st.columns(8)
+        for i, col in enumerate(gnn_cols2):
+            with col:
+                st.metric(f"d{i+8}", f"{e_gnn[i+8]:.3f}")
+
+        # ===================== STEP 6 — Radiomics =====================
+        st.markdown("### Step 6 — Radiomics (texture features from the ROI)")
+        rad_cols = st.columns(5)
+        rad_items = [
+            ("Mean", result.radiomics.mean), ("Std", result.radiomics.std),
+            ("Entropy", result.radiomics.entropy), ("Contrast", result.radiomics.glcm_contrast),
+            ("Homogeneity", result.radiomics.glcm_homogeneity),
+        ]
+        for col, (label, val) in zip(rad_cols, rad_items):
+            with col:
+                st.metric(label, f"{val:.3f}")
+
+        # ===================== STEP 7 — Fusion / risk score =====================
+        st.markdown("### Step 7 — Fusion model: combined risk score")
         rcol1, rcol2 = st.columns([1, 2])
         with rcol1:
             band = result.fusion.band
-            st.markdown(f"""
-                <div class="metric-card">
-                    <div style="color:#9ca3af; font-size:0.9rem;">RISK SCORE</div>
-                    <div style="font-size:2.8rem; font-weight:800; color:white;">{result.fusion.risk_score:.0f}<span style="font-size:1.2rem; color:#6b7280;">/100</span></div>
-                    <div class="risk-badge {RISK_CLASS.get(band, '')}">{RISK_EMOJI.get(band,'')} {band}</div>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="text-align:center;">
+                <div style="color:#9ca3af; font-size:0.9rem;">RISK SCORE</div>
+                <div style="font-size:2.8rem; font-weight:800;">{result.fusion.risk_score:.0f}<span style="font-size:1.2rem;color:#6b7280;">/100</span></div>
+                <div class="risk-badge {RISK_CLASS.get(band,'')}">{band}</div>
+            </div>""", unsafe_allow_html=True)
         with rcol2:
-            st.markdown("**Feature-family attribution**")
+            st.markdown("**Feature-family attribution (SHAP-based)**")
             st.bar_chart(result.fusion.family_attribution)
+
+        # ===================== PDF export =====================
+        pdf_bytes = generate_pdf_report(result, patient_label=uploaded.name)
+        st.download_button(
+            label="📄 Download PDF Report",
+            data=pdf_bytes,
+            file_name=f"ovanet_report_{uploaded.name}.pdf",
+            mime="application/pdf",
+        )
+# ===========================================================================
+# TAB 2: Clinical Checklist
+# ===========================================================================
+with tab_checklist:
+    st.markdown("### Rotterdam / 2023 Guideline Checklist (rule-based, NOT fed to the AI model)")
+    col1, col2 = st.columns(2)
+    with col1:
+        cycle_irregular = st.checkbox("Irregular menstrual cycles")
+        hyperandrogenism = st.checkbox("Clinical/biochemical hyperandrogenism (acne, hirsutism, elevated androgens)")
+        years_since_menarche = st.number_input("Years since menarche", min_value=0.0, max_value=30.0, value=5.0, step=0.5)
+    with col2:
+        lh_fsh = st.number_input("LH/FSH ratio (optional, 0 = not entered)", min_value=0.0, max_value=20.0, value=0.0, step=0.1)
+        amh = st.number_input("AMH level ng/mL (optional, 0 = not entered)", min_value=0.0, max_value=20.0, value=0.0, step=0.1)
+
+    if st.button("Evaluate checklist"):
+        clinical = ClinicalInput(
+            cycle_irregular=cycle_irregular, hyperandrogenism=hyperandrogenism,
+            lh_fsh=lh_fsh if lh_fsh > 0 else None, amh=amh if amh > 0 else None,
+            years_since_menarche=years_since_menarche, source="user_entered",
+        )
+        result = evaluate_checklist(clinical)
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown(f"**{result['summary']}**")
+        if result["criteria_met"]:
+            st.write("✅ Criteria met:", ", ".join(result["criteria_met"]))
+        if result["criteria_unknown"]:
+            st.write("❓ Not entered:", ", ".join(result["criteria_unknown"]))
+        if result["adolescent_caution"]:
+            st.warning(result["adolescent_caution"])
+        st.caption(result["disclaimer"])
         st.markdown('</div>', unsafe_allow_html=True)
 
-        tab1, tab2, tab3 = st.tabs(["🖼️ Vision & Graph", "📊 Radiomics", "📅 Two-visit demo"])
+# ===========================================================================
+# TAB 3: Two-Visit Comparison
+# ===========================================================================
+with tab_twovisit:
+    st.markdown("### Two-Visit Comparison (demo pair unless stated otherwise)")
+    col1, col2 = st.columns(2)
+    with col1:
+        img1_file = st.file_uploader("Visit 1 image", type=["png", "jpg", "jpeg"], key="v1")
+    with col2:
+        img2_file = st.file_uploader("Visit 2 image", type=["png", "jpg", "jpeg"], key="v2")
 
-        with tab1:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("#### Segmentation overlay")
-                st.image(result.vision.ovary_mask * 255, caption="Ovary ROI mask", clamp=True, use_container_width=True)
-                st.caption(f"Method: `{result.vision.seg_method}` · {len(result.vision.follicles)} follicles")
-            with col2:
-                st.markdown("#### Follicle graph")
-                st.markdown(f"**n = {result.graph.n}** nodes")
-                pills = "".join(
-                    f'<span class="feature-pill">{k}: {round(result.graph.stats.get(k, float("nan")), 3)}</span>'
-                    for k in GRAPH_STAT_NAMES
-                )
-                st.markdown(pills, unsafe_allow_html=True)
+    if img1_file and img2_file:
+        img1 = np.array(Image.open(img1_file).convert("L"))
+        img2 = np.array(Image.open(img2_file).convert("L"))
+        r1 = analyze(img1)
+        r2 = analyze(img2)
+        comparison = real_compare(r1, r2, is_demo_pair=True)
 
-        with tab2:
-            rad_cols = st.columns(5)
-            rad_items = [
-                ("Mean", result.radiomics.mean), ("Std", result.radiomics.std),
-                ("Entropy", result.radiomics.entropy), ("Contrast", result.radiomics.glcm_contrast),
-                ("Homogeneity", result.radiomics.glcm_homogeneity),
-            ]
-            for col, (label, val) in zip(rad_cols, rad_items):
-                with col:
-                    st.metric(label, f"{val:.3f}")
-
-        with tab3:
-            longi = mock_longitudinal()
-            st.info("🧪 DEMO PAIR -- two unrelated sample images, not a real patient.")
-            st.write(f"Trend: **{longi.trend}**")
+        st.info("🧪 DEMO PAIR — unless these are verified to be the same patient's real scans.")
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown(f"**Trend: {comparison.trend}**")
+        st.write(comparison.report_text)
+        st.json(comparison.deltas)
+        st.markdown('</div>', unsafe_allow_html=True)
