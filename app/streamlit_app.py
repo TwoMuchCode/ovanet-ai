@@ -192,11 +192,13 @@ elif page == "📅 Two-Visit Monitoring":
         comp1, comp2 = st.columns(2)
         with comp1:
             st.markdown(f"**Visit 1 (Baseline)** &mdash; {len(r1.vision.follicles)} follicles, Risk {r1.fusion.risk_score:.0f}")
-            ov1 = render_follicle_overlay(r1.vision.ovary_mask, r1.vision, r1.graph)
+            raw1_resized = cv2.resize(img1, (IMAGE_SIZE, IMAGE_SIZE))
+            ov1 = render_follicle_overlay(raw1_resized, r1.vision, r1.graph)
             st.image(ov1, caption="Visit 1 Clinical Overlay", use_container_width=True)
         with comp2:
             st.markdown(f"**Visit 2 (Follow-up)** &mdash; {len(r2.vision.follicles)} follicles, Risk {r2.fusion.risk_score:.0f}")
-            ov2 = render_follicle_overlay(r2.vision.ovary_mask, r2.vision, r2.graph)
+            raw2_resized = cv2.resize(img2, (IMAGE_SIZE, IMAGE_SIZE))
+            ov2 = render_follicle_overlay(raw2_resized, r2.vision, r2.graph)
             st.image(ov2, caption="Visit 2 Clinical Overlay", use_container_width=True)
 
 # ---------------------------------------------------------------------------
@@ -249,8 +251,8 @@ else:
                 </div>
             """, unsafe_allow_html=True)
 
-            # Generate PDF Report in memory
-            pdf_bytes = generate_pdf_report(result, patient_id="CLINICAL-DEMO", scan_id=scan_display_name)
+            # Generate PDF Report in memory — pass raw image so overlay shows real scan
+            pdf_bytes = generate_pdf_report(result, patient_id="CLINICAL-DEMO", scan_id=scan_display_name, raw_image=img_array)
             st.write("")
             st.download_button(
                 label="📄 Download Clinical PDF Report",

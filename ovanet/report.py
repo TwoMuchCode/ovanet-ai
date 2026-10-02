@@ -8,6 +8,7 @@ Uses ReportLab to output in-memory bytes suitable for Streamlit downloads.
 
 import io
 from datetime import datetime
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -24,7 +25,7 @@ from reportlab.platypus import (
     KeepTogether,
 )
 
-from ovanet.contracts import AnalysisResult
+from ovanet.contracts import AnalysisResult, IMAGE_SIZE
 from ovanet.visualization import render_follicle_overlay
 
 
@@ -32,6 +33,7 @@ def generate_pdf_report(
     analysis: AnalysisResult,
     patient_id: str = "DEMO-PATIENT-001",
     scan_id: str = "US-SCAN-8842",
+    raw_image: np.ndarray = None,
 ) -> bytes:
     """
     Builds a complete PDF report from an AnalysisResult object.
@@ -182,8 +184,13 @@ def generate_pdf_report(
     elements.append(Spacer(1, 12))
 
     # 3. Visual Overlay Image
-    # Render overlay from raw and vision/graph
-    overlay_rgb = render_follicle_overlay(analysis.vision.ovary_mask, analysis.vision, analysis.graph)
+    # Use passed raw_image if available; otherwise render on a neutral grey background
+    if raw_image is not None:
+        raw_for_overlay = cv2.resize(raw_image, (IMAGE_SIZE, IMAGE_SIZE)) if raw_image.shape[:2] != (IMAGE_SIZE, IMAGE_SIZE) else raw_image
+    else:
+        # Fallback: use the CLAHE-enhanced contrast of the ovary mask region to make a readable background
+        raw_for_overlay = (analysis.vision.ovary_mask * 180).astype(np.uint8) + 38  # dark grey bg, brighter ROI
+    overlay_rgb = render_follicle_overlay(raw_for_overlay, analysis.vision, analysis.graph)
     # Convert overlay to PNG in memory
     img_pil = Image.fromarray(overlay_rgb)
     img_buf = io.BytesIO()

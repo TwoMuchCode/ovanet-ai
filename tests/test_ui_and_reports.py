@@ -34,9 +34,16 @@ def test_render_side_by_side_shape():
 
 def test_generate_pdf_report_valid_bytes():
     analysis = mock_analyze()
-    pdf_bytes = generate_pdf_report(analysis, patient_id="TEST-PT-101", scan_id="SCAN-001")
+    raw = np.random.randint(0, 255, (IMAGE_SIZE, IMAGE_SIZE), dtype=np.uint8)
 
+    # Test with raw_image provided (correct path — overlay shows real scan)
+    pdf_bytes = generate_pdf_report(analysis, patient_id="TEST-PT-101", scan_id="SCAN-001", raw_image=raw)
     assert isinstance(pdf_bytes, bytes)
     assert len(pdf_bytes) > 5000
-    # PDF specification magic header
     assert pdf_bytes.startswith(b"%PDF")
+
+    # Test fallback: no raw_image provided (grey background fallback)
+    pdf_bytes_fallback = generate_pdf_report(analysis, patient_id="TEST-PT-101", scan_id="SCAN-001")
+    assert isinstance(pdf_bytes_fallback, bytes)
+    assert len(pdf_bytes_fallback) > 5000
+    assert pdf_bytes_fallback.startswith(b"%PDF")
