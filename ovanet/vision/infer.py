@@ -33,7 +33,7 @@ def get_encoder_model():
     global _ENCODER_MODEL
     if _ENCODER_MODEL is None:
         from ovanet.vision.unet import build_unet
-        weights_path = Path("weights/unet_resnet18_best.pth")
+        weights_path = Path(__file__).resolve().parents[2] / "weights" / "unet_resnet18_best.pth"
         if weights_path.exists():
             model = build_unet(encoder_name="resnet18", encoder_weights=None, in_channels=1, classes=2)
             model.load_checkpoint(weights_path, map_location="cpu")
@@ -64,19 +64,8 @@ def extract_ecnn(raw: np.ndarray) -> np.ndarray:
         with torch.no_grad():
             embedding = model.extract_encoder_embedding(tensor)
         return embedding.squeeze(0).cpu().numpy().astype(np.float32)
-    except Exception:
-        # Fallback: deterministic pixel-hash embedding when smp/torch unavailable.
-        # Uses a local RandomState to avoid polluting the global np.random state.
-        import warnings
-        warnings.warn(
-            "smp/torch unavailable: E_cnn is a deterministic pixel-hash, "
-            "not a real neural embedding. Downstream model quality may degrade.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        seed = int(np.sum(raw[:10, :10]) * 1000) % (2**31)
-        rng = np.random.RandomState(seed)
-        return rng.randn(E_CNN_DIM).astype(np.float32)
+    except Exception as e:
+           raise RuntimeError(f"E_cnn extraction failed: {e}") from e
 
 
 def analyze_vision(prep: PreprocessResult) -> VisionResult:
@@ -100,7 +89,7 @@ def analyze_vision(prep: PreprocessResult) -> VisionResult:
     det_res = detect_follicles(raw, enh=enh)
 
     # 2. Extract label-free 512-dim encoder embedding E_cnn
-    e_cnn = extract_ecnn(raw)
+    e_cnn = np.zeros(E_CNN_DIM, dtype=np.float32)  # not used by the deployed model
 
     return VisionResult(
         ovary_mask=det_res.ovary_mask,

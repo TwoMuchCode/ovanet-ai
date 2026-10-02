@@ -7,7 +7,7 @@ Windows/Colab/Spaces). Dense adjacency, since graphs have <~50 nodes.
 gcn_embed(graph) -> float32[16], matching contract C4's GNN output shape.
 n < 3 returns zeros (contract rule).
 """
-
+from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
@@ -58,26 +58,30 @@ class GCN(nn.Module):
         return d_mat @ adj_self @ d_mat
 
 
-# Module-level model instance for inference use (training happens separately, Day 5)
-_default_model = GCN()
+GCN_WEIGHTS = Path(__file__).resolve().parents[1] / "weights" / "gcn_v1.pt"
+_model = None
+
+
+def load_gcn(path=GCN_WEIGHTS) -> GCN:
+    """Loads the TRAINED GCN (trained on train split only by scripts/final_run.py)."""
+    global _model
+    if _model is None:
+        if not Path(path).exists():
+            raise FileNotFoundError(f"{path} missing. Run: python scripts/final_run.py")
+        m = GCN()
+        m.load_state_dict(torch.load(path, map_location="cpu"))
+        m.eval()
+        _model = m
+    return _model
 
 
 def gcn_embed(graph) -> np.ndarray:
-    """
-    graph: object/dict with .x (float32[n,5]) and .adj (float32[n,n]), matching C4.
-    Returns float32[16]. n < 3 -> zeros (contract rule).
-    """
+    """graph with .x [n,5], .adj [n,n], .n  ->  float32[16]. n<3 -> zeros (contract)."""
     n = graph.n if hasattr(graph, "n") else graph["n"]
     if n < 3:
         return np.zeros(GCN_EMBED_DIM, dtype=np.float32)
-
     x = graph.x if hasattr(graph, "x") else graph["x"]
     adj = graph.adj if hasattr(graph, "adj") else graph["adj"]
-
-    x_t = torch.tensor(x, dtype=torch.float32)
-    adj_t = torch.tensor(adj, dtype=torch.float32)
-
     with torch.no_grad():
-        embed = _default_model(x_t, adj_t)
-
-    return embed.numpy().astype(np.float32)
+        out = load_gcn()(torch.tensor(x, dtype=torch.float32), torch.tensor(adj, dtype=torch.float32))
+    return out.numpy().astype(np.float32)

@@ -1,13 +1,11 @@
 # tests/test_fusion.py
-import numpy as np
-from ovanet.fusion.model import predict
+from ovanet.fusion.model import load_bundle, predict
 
-def test_predict_returns_valid_fusion_result():
-    fake_features = {f"feature_{i}": 0.0 for i in range(29)}
-    try:
-        result = predict(fake_features)
-        assert 0.0 <= result.risk_score <= 100.0
-        assert result.band in ("LOW", "MODERATE", "HIGH")
-    except FileNotFoundError:
-        import pytest
-        pytest.skip("Run ovanet.fusion.train first to generate weights/fusion_v1.joblib")
+
+def test_predict_real_bundle():
+    b = load_bundle()
+    r = predict({c: 0.0 for c in b["cols"]})
+    assert 0.0 <= r.risk_score <= 100.0
+    assert r.band in ("LOW", "MODERATE", "HIGH")
+    assert abs(sum(r.family_attribution.values()) - 1.0) < 1e-6
+    assert r.top_features and r.top_features[0].name != "placeholder"

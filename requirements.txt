@@ -1,14 +1,15 @@
+-e .
+opencv-python-headless
+scikit-learn==<run: pip show scikit-learn, paste your version>
 numpy
 pandas
 scipy
-scikit-learn
 scikit-image
-opencv-python
 Pillow
 imagehash
 matplotlib
 torch
-shap
 streamlit
-reportlab
+tqdm
+joblib
 pytest

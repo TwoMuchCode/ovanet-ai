@@ -23,3 +23,8 @@ venv/
 
 # os
 .DS_Store
+
+data/gold_test_annotations/images/
+data/processed/*.pkl
+!weights/gcn_v1.pt
+!weights/fusion_v2.joblib
