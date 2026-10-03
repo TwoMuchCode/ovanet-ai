@@ -8,7 +8,6 @@ This is the chart clinicians/judges actually read -- shows WHICH family
 
 import numpy as np
 import joblib
-import shap
 
 FAMILY_MAP = {
     "rad_": "radiomics",
@@ -38,6 +37,8 @@ def explain_prediction(x_row: np.ndarray, X_background: np.ndarray, feature_cols
     X_background: small representative sample for KernelExplainer background (e.g. k-means centers).
     Returns grouped SHAP contribution per family.
     """
+    import shap  # heavy; imported lazily so family_of() works without it
+
     model = joblib.load("weights/fusion_v1.joblib")
 
     background = shap.kmeans(X_background, 10)

@@ -29,24 +29,35 @@ def draw_follicle_overlay(raw01: np.ndarray, follicles: list) -> Image.Image:
     return img
 
 
+def graph_edge_endpoints(graph) -> list:
+    """
+    Pixel endpoints ((x1, y1), (x2, y2)) for every graph edge.
+
+    GraphEdge.source / .target are 0-based INDICES into graph.nodes (and into the
+    rows of graph.x / graph.adj) -- NOT follicle ids, which start at 1.
+    """
+    pts = [(n.x, n.y) for n in graph.nodes]
+    return [
+        (pts[e.source], pts[e.target])
+        for e in graph.edges
+        if 0 <= e.source < len(pts) and 0 <= e.target < len(pts)
+    ]
+
+
 def draw_graph_overlay(raw01: np.ndarray, follicles: list, graph) -> Image.Image:
     """Draws the kNN graph: edges as lines between follicle centers, nodes as dots."""
     img = _to_rgb(raw01)
     draw = ImageDraw.Draw(img)
 
-    # position lookup: graph.nodes carries {id, x, y} in the same pixel space as follicles
-    pos = {n.id: (n.x, n.y) for n in graph.nodes}
-
-    # edges first, so nodes draw on top
+    # edges first, so nodes draw on top; thicker/brighter line = stronger kNN weight
+    pts = [(n.x, n.y) for n in graph.nodes]
     for e in graph.edges:
-        if e.source in pos and e.target in pos:
-            x1, y1 = pos[e.source]
-            x2, y2 = pos[e.target]
-            # thicker/brighter line = stronger kNN weight
+        if 0 <= e.source < len(pts) and 0 <= e.target < len(pts):
+            (x1, y1), (x2, y2) = pts[e.source], pts[e.target]
             w = max(1, min(4, int(round(e.weight * 4))))
             draw.line([x1, y1, x2, y2], fill=(90, 200, 255), width=w)
 
-    for node_id, (x, y) in pos.items():
+    for x, y in pts:
         r = 4
         draw.ellipse([x - r, y - r, x + r, y + r], fill=(255, 220, 60), outline=(0, 0, 0))
 

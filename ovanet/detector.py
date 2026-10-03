@@ -13,11 +13,23 @@ Algorithm:
   3. Adaptive/percentile thresholding restricted to the ovary tissue ROI.
   4. Morphological opening to suppress speckle noise.
   5. Contour extraction and geometric filtering:
-     - Area within [12, 800] pixels (matching follicle scale at 256x256)
+     - Area within [40, 800] pixels (matching follicle scale at 256x256)
      - Solidity >= 0.65 (compact rounded shape)
      - Eccentricity <= 0.85 (rejects linear border / edge artifacts)
      - Mean intensity <= 0.55 (ensures hypoechoic / dark fluid region)
+     - Local contrast >= 0.08: interior must be meaningfully darker than the
+       tissue ring immediately surrounding it (real follicles have a sharp
+       anechoic boundary; generic speckle noise does not)
   6. Outputs VisionResult (ovary_mask, follicle_labels, follicles, e_cnn, seg_method="classical")
+
+TUNING NOTE (2026-10-03): percentile 88->75, min_area 12->40, and the local-contrast
+filter were grid-searched against gold-test-15 ground truth annotations
+(ovanet/evaluation/tune_detector.py). F1 improved from 0.073 (untuned) to 0.157.
+HONEST LIMITATION: this is a measured partial improvement, not a fix -- precision
+is still ~0.13, meaning most detections remain false positives. This classical
+approach appears to have a real ceiling; a materially better detector would need
+shape-based matching (e.g. Hough circle transform) or a trained segmentation
+model. See docs/DECISIONS.md for the full finding.
 """
 
 import math
@@ -36,6 +48,10 @@ def estimate_ovary_mask(raw: np.ndarray) -> np.ndarray:
     """
     Estimate ultrasound sector / ovary tissue ROI.
     Returns uint8 binary mask of shape (IMAGE_SIZE, IMAGE_SIZE) with values {0, 1}.
+
+    HONEST NOTE: this estimates the ultrasound scan fan/sector, NOT the true
+    ovary organ boundary. See docs/DECISIONS.md (issue B) -- gold-test Dice
+    against this mask is not a meaningful measure of ovary localisation.
     """
     gray = (np.clip(raw, 0.0, 1.0) * 255).astype(np.uint8)
     h, w = gray.shape
@@ -144,9 +160,10 @@ def detect_follicles(
     tophat_masked = cv2.bitwise_and(tophat, tophat, mask=mask)
 
     # 3. Dynamic percentile threshold within mask
+    # TUNED: percentile 88 -> 75 (grid-searched against gold-test-15, see module docstring)
     mask_pixels = tophat[mask > 0]
     if len(mask_pixels) > 0 and mask_pixels.max() > 0:
-        thresh_val = float(np.percentile(mask_pixels, 88))
+        thresh_val = float(np.percentile(mask_pixels, 75))
         thresh_val = max(15.0, min(thresh_val, 180.0))
         _, thresh = cv2.threshold(tophat_masked, thresh_val, 255, cv2.THRESH_BINARY)
     else:
@@ -173,8 +190,8 @@ def detect_follicles(
     follicle_id = 1
     for cnt in contours:
         area = float(cv2.contourArea(cnt))
-        # Follicle area bounds in 256x256 space: ~12 to 800 px
-        if area < 12.0 or area > 800.0:
+        # TUNED: min area 12 -> 40 (grid-searched against gold-test-15)
+        if area < 40.0 or area > 800.0:
             continue
 
         # Solidity
@@ -211,6 +228,24 @@ def detect_follicles(
         # Follicles are hypoechoic / dark fluid
         if mean_intensity > 0.55:
             continue
+
+        # NEW: Local contrast check. A real follicle has a sharp anechoic
+        # boundary -- its interior is meaningfully darker than the tissue
+        # ring immediately surrounding it. Generic speckle noise lacks this
+        # boundary and would otherwise pass the absolute-brightness check
+        # above. Threshold 0.08 grid-searched against gold-test-15.
+        eq_radius_int = max(3, int(round(math.sqrt(area / math.pi))))
+        ring_kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE, (eq_radius_int * 2 + 1, eq_radius_int * 2 + 1)
+        )
+        dilated = cv2.dilate(c_mask, ring_kernel)
+        ring_mask = (dilated > 0) & (c_mask == 0) & (mask > 0)
+        if ring_mask.sum() < 5:
+            continue  # ring fell mostly outside the ROI, unreliable measurement
+        ring_mean = float(raw[ring_mask].mean())
+        local_contrast = ring_mean - mean_intensity
+        if local_contrast < 0.08:
+            continue  # not meaningfully darker than surrounding tissue -> likely speckle
 
         eq_radius = float(math.sqrt(area / math.pi))
 

@@ -8,6 +8,8 @@ gcn_embed(graph) -> float32[16], matching contract C4's GNN output shape.
 n < 3 returns zeros (contract rule).
 """
 
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -58,8 +60,30 @@ class GCN(nn.Module):
         return d_mat @ adj_self @ d_mat
 
 
-# Module-level model instance for inference use (training happens separately, Day 5)
-_default_model = GCN()
+# Optional trained weights. No trained GCN is shipped yet: the fusion model was fit on
+# out-of-fold embeddings from throw-away per-fold GCNs (ovanet/evaluation/oof_gnn.py).
+GCN_WEIGHTS_PATH = Path(__file__).resolve().parents[1] / "weights" / "gcn_v1.pt"
+
+
+def _build_default_model():
+    """Deterministic model; loads trained weights if they exist. Returns (model, is_trained)."""
+    with torch.random.fork_rng():
+        torch.manual_seed(0)  # never random between runs
+        model = GCN()
+    trained = False
+    if GCN_WEIGHTS_PATH.exists():
+        model.load_state_dict(torch.load(GCN_WEIGHTS_PATH, map_location="cpu", weights_only=True))
+        trained = True
+    model.eval()
+    return model, trained
+
+
+_default_model, _IS_TRAINED = _build_default_model()
+
+
+def is_trained() -> bool:
+    """True only if trained GCN weights were loaded. Untrained embeddings must not feed fusion."""
+    return _IS_TRAINED
 
 
 def gcn_embed(graph) -> np.ndarray:
@@ -81,3 +105,15 @@ def gcn_embed(graph) -> np.ndarray:
         embed = _default_model(x_t, adj_t)
 
     return embed.numpy().astype(np.float32)
+
+# ---------------------------------------------------------------------------
+# is_trained() -- used by pipeline.py/app to know whether gcn_embed() output
+# is a real learned embedding or just an untrained/random-init forward pass.
+# No final GCN has been trained yet (see docs/DECISIONS.md, issue E), so this
+# currently always returns False until weights/gcn_v1.pt exists.
+# ---------------------------------------------------------------------------
+
+import os
+
+def is_trained() -> bool:
+    return os.path.exists("weights/gcn_v1.pt")

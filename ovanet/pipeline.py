@@ -12,7 +12,7 @@ from ovanet.preprocessing import preprocess
 from ovanet.vision.infer import analyze_vision
 from ovanet.radiomics import extract
 from ovanet.graph import build_graph
-from ovanet.gnn import gcn_embed
+from ovanet.gnn import gcn_embed, is_trained
 from ovanet.fusion.model import predict as fusion_predict
 from ovanet.contracts import AnalysisResult, GRAPH_STAT_NAMES
 
@@ -38,8 +38,8 @@ def analyze(image: np.ndarray, clinical=None) -> AnalysisResult:
     }
     for name in GRAPH_STAT_NAMES:
         feature_dict[f"graph_{name}"] = graph.stats.get(name, 0.0)
-    for i, val in enumerate(e_gnn):
-        feature_dict[f"e_gnn_{i}"] = float(val)
+    # e_gnn deliberately NOT included -- no final GCN is trained (issue E),
+    # and fusion-v2 was trained on radiomics+graph only (see fusion/features.py).
 
     fusion = fusion_predict(feature_dict)
 
@@ -52,4 +52,4 @@ def analyze(image: np.ndarray, clinical=None) -> AnalysisResult:
         timings={"total_s": time.time() - t0},
         warnings=warnings,
         is_mock=False,
-    )
+    )

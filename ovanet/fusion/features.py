@@ -1,10 +1,17 @@
 """
 ovanet/fusion/features.py
 
-Assembles the real fused feature vector per contract C6:
-radiomics (5) + follicle/graph stats (8) + E_gnn (16) for now.
-PCA(E_cnn) is added once Madhumita's U-Net export lands (Day 6/7 per her side) --
-left as a hook, not yet wired.
+Assembles the fused feature vector for the DEPLOYED model: radiomics (5) +
+follicle/graph stats (8) only -- 13 real features.
+
+e_gnn_* columns are deliberately EXCLUDED here. They were produced by
+throwaway per-fold GCNs during ovanet/evaluation/oof_gnn.py -- no final GCN
+was ever trained (see docs/DECISIONS.md, issue E), so those 16 columns are
+untrained noise, not real embeddings. Training on them and then filling
+missing values with the training mean at inference (the prior approach)
+meant the model carried small but real coefficients on pure noise, and
+every live prediction silently added back a constant that encoded nothing.
+Dropping them is both more honest and strictly simpler.
 """
 
 import numpy as np
@@ -16,20 +23,25 @@ GRAPH_STAT_COLS = [
     "graph_mean_degree", "graph_clustering_coeff", "graph_peripheral_index",
     "graph_size_cv", "graph_follicle_area_fraction",
 ]
+FEATURE_COLS = RADIOMICS_COLS + GRAPH_STAT_COLS
 
 
-def load_fusion_dataset(features_path="data/processed/features_v2.csv",
-                         oof_path="data/processed/e_gnn_oof_v1.csv"):
-    """Returns (X, y, groups, feature_names) for the TRAIN split, with E_gnn included."""
-    features = pd.read_csv(features_path)
-    oof = pd.read_csv(oof_path)
-    merged = features.merge(oof, on=["path", "label", "group_id"], suffixes=("", "_oof"))
+def load_fusion_dataset(features_path="data/processed/features_v2.csv", split=None):
+    """
+    Returns (X, y, groups, feature_names).
 
-    e_gnn_cols = [c for c in merged.columns if c.startswith("e_gnn_")]
-    feature_cols = RADIOMICS_COLS + GRAPH_STAT_COLS + e_gnn_cols
+    split: None (all rows), or one of "train"/"val"/"test" to filter to that
+    split only (uses the real split column from splits.csv, merged into
+    features_v2.csv -- NOT a random re-split).
+    """
+    df = pd.read_csv(features_path)
+    if split is not None:
+        if "split" not in df.columns:
+            raise ValueError("features_v2.csv has no 'split' column -- cannot filter by split")
+        df = df[df["split"] == split].reset_index(drop=True)
 
-    X = merged[feature_cols].values.astype(np.float32)
-    y = (merged["label"] == "infected").astype(int).values
-    groups = merged["group_id"].values
+    X = df[FEATURE_COLS].values.astype(np.float32)
+    y = (df["label"] == "infected").astype(int).values
+    groups = df["group_id"].values
 
-    return X, y, groups, feature_cols
+    return X, y, groups, FEATURE_COLS
