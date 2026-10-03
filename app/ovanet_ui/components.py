@@ -49,8 +49,7 @@ LOGO = ('<svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><def
         '<circle cx="9" cy="16" r="2.2" fill="#4f7cff"/><circle cx="16" cy="10" r="2.2" fill="#22d3ee"/>'
         '<circle cx="23" cy="17" r="2.2" fill="#8b5cf6"/><circle cx="15" cy="22" r="1.8" fill="#c4b5fd"/></svg>')
 
-NAV_ITEMS = [("Overview", "overview"), ("Analysis", "analysis"), ("Insights", "insights"), ("Comparison", "comparison"), ("Safety", "safety")]
-
+NAV_ITEMS = [("Overview", "overview"), ("Analysis", "analysis"), ("Insights", "insights"), ("Comparison", "comparison"), ("Precautions", "precautions")]
 def nav() -> None:
     links = "".join(f'<a href="#{i}" target="_self">{t}</a>' for t, i in NAV_ITEMS)
     html(f"""<nav class="ov-nav" aria-label="Primary">
