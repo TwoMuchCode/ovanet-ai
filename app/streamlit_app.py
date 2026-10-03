@@ -11,7 +11,9 @@ Run:  streamlit run app/streamlit_app.py
 from PIL import Image
 import numpy as np
 import streamlit as st
-
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ovanet.preprocessing import preprocess as real_preprocess
 from ovanet.visualization import draw_follicle_overlay, draw_graph_overlay
 from ovanet.pipeline import analyze
