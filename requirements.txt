@@ -3,6 +3,7 @@ pandas
 scipy
 scikit-learn
 scikit-image
+opencv-python-headless
 opencv-python
 Pillow
 imagehash
@@ -12,3 +13,4 @@ shap
 streamlit
 reportlab
 pytest
+joblib
