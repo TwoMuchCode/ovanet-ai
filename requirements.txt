@@ -1,10 +1,9 @@
+-e .
 numpy
 pandas
 scipy
 scikit-learn
 scikit-image
-opencv-python-headless
-opencv-python
 Pillow
 imagehash
 matplotlib
@@ -13,4 +12,5 @@ shap
 streamlit
 reportlab
 pytest
+opencv-python-headless
 joblib
