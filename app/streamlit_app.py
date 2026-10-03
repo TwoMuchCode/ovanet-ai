@@ -209,33 +209,38 @@ with st.container(key="glass_compare"):
     else:
         ui.empty("Upload both visits to compare risk score, follicle count and trend.")
 
-ui.section("Safety", "Responsible AI & Safety Precautions",
-           "What this tool is, what it isn't, and how its limitations are handled.", anchor="safety")
-with st.container(key="glass_safety"):
+# =========================================================================
+# PCOS PRECAUTIONS (general health guidance, not tool-specific)
+# =========================================================================
+ui.section("Precautions", "General Precautions & Lifestyle Guidance",
+           "General, widely-recommended guidance for people managing or at risk of PCOS. Not personalized medical advice — always consult a qualified clinician.", anchor="precautions")
+with st.container(key="glass_precautions"):
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("""
+#### ✅ Generally recommended
+- Maintain a balanced diet with controlled refined-sugar and processed-carb intake
+- Regular moderate exercise (150+ min/week is a commonly cited general target)
+- Prioritize consistent sleep (7–9 hours); poor sleep is linked to worse insulin resistance
+- Track menstrual cycles to identify irregularity patterns early
+- Manage stress — chronic stress affects hormonal balance
+- Regular check-ups with a gynecologist or endocrinologist, especially if symptoms are present
+- Discuss family history of PCOS, diabetes, or metabolic conditions with your doctor
+""")
+    with c2:
+        st.markdown("""
+#### ⚠️ Generally discouraged
+- Self-diagnosing or self-medicating without professional input
+- Ignoring persistent irregular cycles, excess hair growth, or acne without medical review
+- Crash dieting or extreme calorie restriction without professional guidance
+- Delaying care due to symptom embarrassment — PCOS is common and manageable
+- Relying on unverified online "cures" or unregulated supplements
+""")
     st.markdown("""
-**Research prototype — not a diagnosis.** OvaNet AI is a decision-support
-research tool. It has not been clinically validated and must not be used
-to diagnose, rule out, or treat any condition.
-
-**Known limitations, disclosed openly:**
-- Follicle detection precision is currently low (~13% on expert-annotated
-  validation images); counts and sizes shown should be treated as
-  approximate, not exact.
-- The "ovary region" shown is the detected ultrasound scan area, not a
-  verified anatomical ovary boundary.
-- The underlying public dataset shows signs of correlation between labels
-  and image-acquisition properties (resolution, brightness) rather than
-  confirmed pathology alone; this is reported alongside every result
-  rather than hidden.
-- Risk scores are not calibrated against clinical outcomes and are not a
-  substitute for a radiologist or clinician's assessment.
-
-**Intended use:** research, education, and as a supplementary signal for
-qualified professionals — always alongside clinical judgment and the
-Rotterdam checklist above, never standalone.
-
-**Data handling:** images are processed only for the current session and
-are not stored, shared, or used to retrain any model.
+---
+**When to see a doctor promptly:** significantly irregular or absent periods,
+sudden or severe acne/hair growth changes, difficulty conceiving, or any
+symptom that concerns you.
 """)
 
 ui.transparency()
